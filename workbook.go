@@ -7,7 +7,12 @@ import (
 	"os"
 	"unicode/utf16"
 
+	"golang.org/x/text/encoding"
 	"golang.org/x/text/encoding/charmap"
+	"golang.org/x/text/encoding/japanese"
+	"golang.org/x/text/encoding/korean"
+	"golang.org/x/text/encoding/simplifiedchinese"
+	"golang.org/x/text/encoding/traditionalchinese"
 )
 
 // xls workbook type
@@ -73,19 +78,35 @@ func (wb *WorkBook) addFormat(format *Format) {
 	wb.Formats[format.Head.Index] = format
 }
 
-func decodeWindows1251(enc []byte) string {
-	dec := charmap.Windows1251.NewDecoder()
-	out, _ := dec.Bytes(enc)
+func encodingForCodepage(cp uint16) encoding.Encoding {
+	switch cp {
+	case 935, 936: // GBK / GB2312
+		return simplifiedchinese.GBK
+	case 950:
+		return traditionalchinese.Big5
+	case 932:
+		return japanese.ShiftJIS
+	case 949:
+		return korean.EUCKR
+	case 1251:
+		return charmap.Windows1251
+	case 1250:
+		return charmap.Windows1250
+	default: // 1252 Latin-1
+		return charmap.Windows1252
+	}
+}
 
-	return string(out)
+func decodeString(cp uint16, enc []byte) string {
+	dec, _ := encodingForCodepage(cp).NewDecoder().Bytes(enc)
+	return string(dec)
 }
 
 func (wb *WorkBook) getString(buf io.ReadSeeker, size uint16) (res string, err error) {
 	if wb.Is5ver {
 		bts := make([]byte, size)
 		_, err = buf.Read(bts)
-		res = decodeWindows1251(bts)
-		// res = string(bts)
+		res = decodeString(wb.Codepage, bts)
 	} else {
 		richtextNum := uint16(0)
 		phoneticSize := uint32(0)
