@@ -268,3 +268,7 @@ func (w *WorkSheet) addRow(info *rowInfo) (row *Row) {
 
 	return
 }
+
+func (w *WorkSheet) RowLen() int {
+	return len(w.rows)
+}
